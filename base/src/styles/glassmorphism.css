@@ -1,0 +1,76 @@
+
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}
+
+.dark .glassmorphism {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.bg-sidebar-background {
+  @apply bg-white dark:bg-gray-900;
+}
+
+.text-sidebar-foreground {
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+.border-sidebar-border {
+  @apply border-gray-200 dark:border-gray-800;
+}
+
+.bg-sidebar-accent {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+.text-sidebar-accent-foreground {
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+.text-sidebar-primary {
+  @apply text-pink-600 dark:text-pink-400;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
+.bg-health-critical {
+  @apply bg-red-500 dark:bg-red-600;
+}
+
+.bg-health-warning {
+  @apply bg-amber-500 dark:bg-amber-600;
+}
+
+.bg-health-normal {
+  @apply bg-green-500 dark:bg-green-600;
+}
+
+.text-health-critical {
+  @apply text-red-500 dark:text-red-400;
+}
+
+.text-health-warning {
+  @apply text-amber-500 dark:text-amber-400;
+}
+
+.text-health-normal {
+  @apply text-green-500 dark:text-green-400;
+}
