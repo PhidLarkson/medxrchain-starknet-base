@@ -1,118 +1,110 @@
-%lang starknet
+#[starknet::contract]
+mod MedicalNFT {
+    use starknet::{ContractAddress, get_caller_address};
+    use core::pedersen::pedersen;
 
-from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.starknet.common.syscalls import get_caller_address
-from starkware.cairo.common.uint256 import Uint256, uint256_add
-from starkware.cairo.common.alloc import alloc
+    #[storage]
+    struct Storage {
+        token_counter: u256,
+        token_owner: LegacyMap<u256, ContractAddress>,
+        token_metadata_patient_id: LegacyMap<u256, felt252>,
+        token_metadata_scan_type: LegacyMap<u256, felt252>,
+        token_metadata_ipfs_hash: LegacyMap<u256, felt252>,
+        token_metadata_doctor: LegacyMap<u256, felt252>,
+        token_metadata_timestamp: LegacyMap<u256, felt252>,
+        patient_token_count: LegacyMap<felt252, u256>,
+    }
 
-# Storage variables
-@storage_var
-func token_counter() -> (count: Uint256):
-end
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        NFTMinted: NFTMinted,
+    }
 
-@storage_var
-func token_owner(token_id: Uint256) -> (owner: felt):
-end
+    #[derive(Drop, starknet::Event)]
+    struct NFTMinted {
+        #[key]
+        patient_id: felt252,
+        #[key]
+        token_id: u256,
+        ipfs_hash: felt252,
+    }
 
-@storage_var
-func token_metadata_patient_id(token_id: Uint256) -> (patient_id: felt):
-end
+    #[constructor]
+    fn constructor(ref self: ContractState) {
+        self.token_counter.write(0);
+    }
 
-@storage_var
-func token_metadata_scan_type(token_id: Uint256) -> (scan_type: felt):
-end
+    #[external(v0)]
+    fn mint_medical_nft(
+        ref self: ContractState,
+        patient_id: felt252,
+        scan_type: felt252,
+        ipfs_hash: felt252,
+        doctor: felt252,
+        upload_timestamp: felt252,
+        diagnosis_summary: felt252,
+        notes: felt252
+    ) -> u256 {
+        let caller = get_caller_address();
+        
+        // Get current token counter and increment
+        let current_count = self.token_counter.read();
+        let new_token_id = current_count + 1;
+        
+        // Update token counter
+        self.token_counter.write(new_token_id);
+        
+        // Store token owner
+        self.token_owner.write(new_token_id, caller);
+        
+        // Store metadata
+        self.token_metadata_patient_id.write(new_token_id, patient_id);
+        self.token_metadata_scan_type.write(new_token_id, scan_type);
+        self.token_metadata_ipfs_hash.write(new_token_id, ipfs_hash);
+        self.token_metadata_doctor.write(new_token_id, doctor);
+        self.token_metadata_timestamp.write(new_token_id, upload_timestamp);
+        
+        // Update patient token count
+        let patient_count = self.patient_token_count.read(patient_id);
+        self.patient_token_count.write(patient_id, patient_count + 1);
+        
+        // Emit event
+        self.emit(NFTMinted { 
+            patient_id, 
+            token_id: new_token_id, 
+            ipfs_hash 
+        });
+        
+        new_token_id
+    }
 
-@storage_var
-func token_metadata_ipfs_hash(token_id: Uint256) -> (ipfs_hash: felt):
-end
+    #[external(v0)]
+    fn get_token_owner(self: @ContractState, token_id: u256) -> ContractAddress {
+        self.token_owner.read(token_id)
+    }
 
-@storage_var
-func token_metadata_doctor(token_id: Uint256) -> (doctor: felt):
-end
+    #[external(v0)]
+    fn get_token_metadata(
+        self: @ContractState, 
+        token_id: u256
+    ) -> (felt252, felt252, felt252, felt252, felt252) {
+        let patient_id = self.token_metadata_patient_id.read(token_id);
+        let scan_type = self.token_metadata_scan_type.read(token_id);
+        let ipfs_hash = self.token_metadata_ipfs_hash.read(token_id);
+        let doctor = self.token_metadata_doctor.read(token_id);
+        let timestamp = self.token_metadata_timestamp.read(token_id);
+        
+        (patient_id, scan_type, ipfs_hash, doctor, timestamp)
+    }
 
-@storage_var
-func token_metadata_timestamp(token_id: Uint256) -> (timestamp: felt):
-end
+    #[external(v0)]
+    fn get_total_supply(self: @ContractState) -> u256 {
+        self.token_counter.read()
+    }
 
-@storage_var
-func patient_token_count(patient_id: felt) -> (count: Uint256):
-end
-
-# Events
-@event
-func NFTMinted(patient_id: felt, token_id: Uint256, ipfs_hash: felt):
-end
-
-# Constructor
-@constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}():
-    token_counter.write(Uint256(0, 0))
-    return ()
-end
-
-# Main minting function
-@external
-func mint_medical_nft{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(
-    patient_id: felt,
-    scan_type: felt,
-    ipfs_hash: felt,
-    doctor: felt,
-    upload_timestamp: felt,
-    diagnosis_summary: felt,
-    notes: felt
-) -> (token_id: Uint256):
-    alloc_locals
-    
-    let (caller) = get_caller_address()
-    
-    # Get current token counter and increment
-    let (current_count) = token_counter.read()
-    let (new_token_id, _) = uint256_add(current_count, Uint256(1, 0))
-    
-    # Update token counter
-    token_counter.write(new_token_id)
-    
-    # Store token owner
-    token_owner.write(new_token_id, caller)
-    
-    # Store metadata separately
-    token_metadata_patient_id.write(new_token_id, patient_id)
-    token_metadata_scan_type.write(new_token_id, scan_type)
-    token_metadata_ipfs_hash.write(new_token_id, ipfs_hash)
-    token_metadata_doctor.write(new_token_id, doctor)
-    token_metadata_timestamp.write(new_token_id, upload_timestamp)
-    
-    # Update patient token count
-    let (patient_count) = patient_token_count.read(patient_id)
-    let (new_patient_count, _) = uint256_add(patient_count, Uint256(1, 0))
-    patient_token_count.write(patient_id, new_patient_count)
-    
-    # Emit event
-    NFTMinted.emit(patient_id, new_token_id, ipfs_hash)
-    
-    return (new_token_id)
-end
-
-# View functions
-@view
-func get_token_owner{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    token_id: Uint256
-) -> (owner: felt):
-    let (owner) = token_owner.read(token_id)
-    return (owner)
-end
-
-@view
-func get_token_metadata{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    token_id: Uint256
-) -> (patient_id: felt, scan_type: felt, ipfs_hash: felt, doctor: felt, timestamp: felt):
-    let (patient_id) = token_metadata_patient_id.read(token_id)
-    let (scan_type) = token_metadata_scan_type.read(token_id)
-    let (ipfs_hash) = token_metadata_ipfs_hash.read(token_id)
-    let (doctor) = token_metadata_doctor.read(token_id)
-    let (timestamp) = token_metadata_timestamp.read(token_id)
-    
-    return (patient_id, scan_type, ipfs_hash, doctor, timestamp)
-end
+    #[external(v0)]
+    fn get_patient_token_count(self: @ContractState, patient_id: felt252) -> u256 {
+        self.patient_token_count.read(patient_id)
+    }
+}
